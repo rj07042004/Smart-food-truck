@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Menu</title>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-image: url('bg.jpg'); /* Replace with your image URL */
+            background-size: cover;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: white; /* Adjust text color as needed */
+        }
+
+        .menu {
+            position: relative;
+            background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent black background */
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: center;
+            font-size: large;
+            border-bottom: 1px solid #ddd; /* Light gray bottom border */
+        }
+
+        .quantity {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .quantity input[type=number] {
+            width: 50px;
+            text-align: center;
+            margin: 0 5px;
+        }
+
+        .quantity button {
+            width: 30px; /* Larger button size */
+            height: 30px;
+        }
+
+        .order-button button {
+            padding: 10px 20px;
+            align-items: center;
+            font-size: 1.2em;
+            cursor: pointer;
+        }
+
+        .menu-img {
+            width: 150px;
+            height: 150px;
+            object-fit: cover; /* This ensures the image covers the area without distorting aspect ratio */
+        }
+
+    </style>
+</head>
+<body>
+    <div class="menu">
+        <table>
+            <!-- Header -->
+            <tr><th colspan="3">Smart Shop</th></tr>
+            <!-- Item 1 -->
+            <tr>
+                <td><img class="menu-img" src="Item1.jpg" alt="Food Item 1"></td>
+                <td>Burger</td>
+                <td class="quantity">
+                    <button onclick="changeQuantity('quantity1', -1)">-</button>
+                    <input type="number" id="quantity1" min="0" max="9" value="1">
+                    <button onclick="changeQuantity('quantity1', 1)">+</button>
+                </td>
+            </tr>
+            <!-- Item 2 -->
+            <tr>
+                <td><img class="menu-img"  src="item2.jpg" alt="Food Item 2"></td>
+                <td>Momos</td>
+                <td class="quantity">
+                    <button onclick="changeQuantity('quantity2', -1)">-</button>
+                    <input type="number" id="quantity2" min="0" max="9" value="1">
+                    <button onclick="changeQuantity('quantity2', 1)">+</button>
+                </td>
+            </tr>
+            <!-- Item 3 -->
+            <tr>
+                <td><img  class="menu-img" src="item3.jpg" alt="Food Item 3"></td>
+                <td>Cold Drink</td>
+                <td class="quantity">
+                    <button onclick="changeQuantity('quantity3', -1)">-</button>
+                    <input type="number" id="quantity3" min="0" max="9" value="1">
+                    <button onclick="changeQuantity('quantity3', 1)">+</button>
+                </td>
+            </tr>
+        </table>
+        <div class="order-button">
+            <button onclick="placeOrder()">Place Order</button>
+        </div>
+    </div>
+    <script>
+        let port; // Global variable for the serial port
+
+async function connectArduino() {
+    if (port) {
+        // If already connected, don't connect again
+        return;
+    }
+
+    // Requesting a serial port
+    port = await navigator.serial.requestPort();
+    await port.open({ baudRate: 9600 });
+}
+
+function changeQuantity(id, change) {
+    var element = document.getElementById(id);
+    var currentValue = parseInt(element.value);
+    var newValue = currentValue + change;
+    if (newValue >= 0 && newValue <= 9) {
+        element.value = newValue;
+    }
+}
+
+async function placeOrder() {
+    await connectArduino(); // Ensure connection with Arduino
+
+    if (!port || !port.writable) {
+        alert("Connection to Arduino not established.");
+        return;
+    }
+
+    let totalItems = 0;
+    let orderData = '';
+    for (let i = 1; i <= 3; i++) {
+        const quantity = parseInt(document.getElementById(`quantity${i}`).value);
+        totalItems += quantity;
+        orderData += quantity + ',';
+    }
+
+    if (totalItems > 0) {
+        // Remove the last comma and add a newline character
+        orderData = orderData.slice(0, -1) + '\n';
+
+        // Sending the order data to Arduino
+        const writer = port.writable.getWriter();
+        const encodedData = new TextEncoder().encode(orderData);
+        await writer.write(encodedData);
+        writer.releaseLock();
+
+        alert(`Order placed for ${totalItems} items, Please wait at your table.`);
+    } else {
+        alert("Please select at least one item.");
+    }
+}
+
+    </script>
+</body>
+</html>
